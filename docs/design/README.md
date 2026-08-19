@@ -9,6 +9,7 @@ They explain the current implementation and deliberately unsupported behavior; t
 - [UI Testing](ui-testing.md): windowless Runtime ownership, observation lifetime, captures, distribution, and carriers.
 - [View Composition and Environment](view-composition.md): declaration, compilation, reconciliation, and composition boundaries.
 - [Composable Code Generation](composable-codegen.md): marker transformation, diagnostics, and CMake integration.
+- [Declarative UI DSL](declarative.md): optional `.ui` front-end syntax, parser ownership, and build integration.
 - [Incremental Layout and Rendering](incremental-rendering.md): retained geometry, invalidation, scene construction, and damage.
 - [Interaction and Indication](interaction-indication.md): interaction facts, visuals, paint ordering, and customization.
 - [Gesture Recognition and Arbitration](gestures.md): recognition, competition, ownership, velocity, and cancellation.

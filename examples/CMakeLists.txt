@@ -1,6 +1,9 @@
 include("${CMAKE_CURRENT_LIST_DIR}/../cmake/HuxerUIExamples.cmake")
 
 add_subdirectory(counter)
+if (NOT CMAKE_CROSSCOMPILING OR HUXERUI_DECLARATIVE_CODEGEN)
+    add_subdirectory(declarative_counter)
+endif ()
 add_subdirectory(ui_gallery)
 add_subdirectory(dynamic_list)
 add_subdirectory(scroll_view)

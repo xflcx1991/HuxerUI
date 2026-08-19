@@ -1,0 +1,29 @@
+component Counter {
+  state {
+    count: 0
+  }
+
+  Center {
+    Row {
+      spacing: 12
+      crossAxisAlignment: center
+
+      Button {
+        text: "-"
+        enabled: count > 0
+        onClick: count = count - 1
+      }
+
+      Text {
+        text: "${count}"
+        fontSize: 30
+      }
+
+      Button {
+        text: "+"
+        enabled: count < 100
+        onClick: count = count + 1
+      }
+    }
+  }
+}

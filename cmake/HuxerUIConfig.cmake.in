@@ -11,6 +11,11 @@ if (HUXERUI_LIBRARY_GRAPH_ONLY)
 endif ()
 
 set(HUXERUI_HOST_TOOL_ROOT "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_DATADIR@/huxerui/tools")
+if (NOT HUXERUI_DECLARATIVE_CODEGEN)
+    set(HUXERUI_DECLARATIVE_CODEGEN
+            "@HUXERUI_DECLARATIVE_CODEGEN_DEFAULT@"
+    )
+endif ()
 set_and_check(HUXERUI_BUILTIN_RESOURCE_PACKAGE
         "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_DATADIR@/huxerui/resources"
 )
@@ -211,6 +216,7 @@ foreach (_HUXERUI_COMPONENT IN LISTS HuxerUI_FIND_COMPONENTS)
 endforeach ()
 
 include("${CMAKE_CURRENT_LIST_DIR}/HuxerUIWindowsInstaller.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/HuxerUIDeclarative.cmake")
 
 check_required_components(HuxerUI)
 

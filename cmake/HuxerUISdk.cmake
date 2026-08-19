@@ -36,6 +36,17 @@ if (TARGET huxerui_testing AND NOT ANDROID)
             COMPONENT HuxerUILibraries)
 endif ()
 
+if (TARGET huxerui_declarative_codegen)
+    install(TARGETS huxerui_declarative_codegen
+            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
+    )
+    set(HUXERUI_DECLARATIVE_CODEGEN_DEFAULT
+            "\${PACKAGE_PREFIX_DIR}/${CMAKE_INSTALL_LIBEXECDIR}/huxerui_declarative_codegen${CMAKE_EXECUTABLE_SUFFIX}"
+    )
+else ()
+    set(HUXERUI_DECLARATIVE_CODEGEN_DEFAULT "")
+endif ()
+
 install(DIRECTORY "${HUXERUI_PUBLIC_HEADER_DIR}"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
@@ -97,6 +108,7 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/HuxerUIConfigVersion.cmake"
         "${HUXERUI_PROJECT_DIR}/cmake/HuxerUIApp.cmake"
         "${HUXERUI_PROJECT_DIR}/cmake/HuxerUICodegen.cmake"
+        "${HUXERUI_PROJECT_DIR}/cmake/HuxerUIDeclarative.cmake"
         "${HUXERUI_PROJECT_DIR}/cmake/HuxerUILibraries.cmake"
         "${HUXERUI_PROJECT_DIR}/cmake/HuxerUIResourceBuild.cmake"
         "${HUXERUI_PROJECT_DIR}/cmake/HuxerUIResources.cmake"

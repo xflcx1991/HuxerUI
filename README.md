@@ -104,6 +104,7 @@ See [Platform Support](docs/guide/platforms.md) for host requirements and platfo
 - [Core Concepts](docs/guide/core-concepts.md)
 - [Components and Input](docs/guide/components.md)
 - [Architecture Design](docs/design/architecture.md)
+- [Declarative UI DSL](docs/design/declarative.md)
 - [Examples](examples/)
 
 Repository contributors should start with [Building HuxerUI](docs/development/building.md).

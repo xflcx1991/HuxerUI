@@ -66,6 +66,10 @@ set(HUXERUI_STATIC_LIB_NAME "${PROJECT_NAME}_static")
 
 include(cmake/HuxerUIBuild.cmake)
 huxerui_configure_targets()
+if (NOT HUXERUI_LIBRARY_GRAPH_ONLY AND NOT CMAKE_CROSSCOMPILING)
+    add_subdirectory(tools/declarative_codegen EXCLUDE_FROM_ALL)
+endif ()
+include(cmake/HuxerUIDeclarative.cmake)
 include(cmake/HuxerUIApp.cmake)
 include(cmake/HuxerUIWindowsInstaller.cmake)
 
