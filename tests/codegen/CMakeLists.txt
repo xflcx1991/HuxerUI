@@ -12,7 +12,9 @@ huxerui_add_test_suite(huxerui_codegen_runtime_tests HuxerUICodegenRuntimeTests
 huxerui_enable_codegen(huxerui_codegen_runtime_tests)
 huxerui_add_test_suite(huxerui_declarative_codegen_tests HuxerUIDeclarativeCodegenTests
         LABELS tools codegen
-        SOURCES declarative_codegen.cpp "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen/generator.cpp"
+        SOURCES declarative_codegen.cpp
+            "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen/generator.cpp"
+            "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen/parser.cpp"
 )
 target_include_directories(huxerui_declarative_codegen_tests PRIVATE
         "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen"

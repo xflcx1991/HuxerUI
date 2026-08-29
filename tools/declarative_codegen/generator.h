@@ -1,33 +1,13 @@
 #pragma once
 
-#include <cstddef>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
+#include "parser.h"
+
 namespace huxerui::declarative_codegen {
 
-class GeneratorError final : public std::runtime_error {
-public:
-  GeneratorError(std::size_t offset, int line, int column, std::string message);
-
-  [[nodiscard]] std::size_t Offset() const noexcept {
-    return offset_;
-  }
-
-  [[nodiscard]] int Line() const noexcept {
-    return line_;
-  }
-
-  [[nodiscard]] int Column() const noexcept {
-    return column_;
-  }
-
-private:
-  std::size_t offset_;
-  int line_;
-  int column_;
-};
+using huxerui::declarative::ParseError;
 
 struct GeneratedSources {
   std::string header;

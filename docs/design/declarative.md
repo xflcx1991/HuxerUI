@@ -56,3 +56,21 @@ Native source builds use the `huxerui_declarative_codegen` host executable. Cros
 ## Initial limits
 
 The initial grammar supports component declarations, nested `Center`/`Text`/`Button`/`Row`/`Column`/`Stack` nodes, scalar state literals, arithmetic and boolean expressions, text interpolation, and single-state assignments from `onClick`. Text and button labels are double-quoted strings. Parent-size shortcuts, arbitrary C++ expressions, loops, conditional children, and custom components are not part of this first version.
+
+## Preview tool
+
+`huxerui_preview` is a standalone executable that renders a `.ui` file directly without C++ code generation or compilation. It parses the file with the same shared parser used by `huxerui_declarative_codegen`, then constructs HuxerUI `View` values at runtime through an evaluator. This provides sub-second UI iteration without a build step.
+
+```bash
+huxerui_preview counter.ui
+```
+
+The preview tool supports the same component, state, layout, and expression grammar as code generation. State changes from `onClick` handlers update the preview in real time. Custom C++ components and complex application logic are not available in the preview; use the code-generation path for full application behavior.
+
+A typical development loop uses `watchexec` to restart the preview on file changes:
+
+```bash
+watchexec --restart --exts ui --debounce 300ms -- huxerui_preview counter.ui
+```
+
+Each restart re-parses the file and rebuilds the window. State resets to initial values on restart because the preview process does not preserve runtime state across restarts.

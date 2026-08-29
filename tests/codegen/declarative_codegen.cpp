@@ -7,7 +7,7 @@
 namespace {
 
 using huxerui::declarative_codegen::GenerateSources;
-using huxerui::declarative_codegen::GeneratorError;
+using huxerui::declarative::ParseError;
 
 TEST_CASE("Declarative counter emits existing HuxerUI composition APIs") {
   const std::string source = R"ui(
@@ -61,12 +61,49 @@ component Toggle {
   REQUIRE(generated.source.find("enabled = (!enabled);") != std::string::npos);
 }
 
-template <class Function> void RequireGeneratorError(Function&& function) {
-  REQUIRE_THROWS_AS(function(), GeneratorError);
+template <class Function> void RequireParseError(Function&& function) {
+  REQUIRE_THROWS_AS(function(), ParseError);
+}
+
+TEST_CASE("Declarative expressions preserve binary and unary operators") {
+  const auto generated = GenerateSources(
+      R"ui(
+component Counter {
+  state {
+    count: 0
+    enabled: false
+  }
+  Column {
+    Button {
+      text: "subtract"
+      onClick: count = count - 0
+    }
+    Button {
+      text: "negative"
+      onClick: count = 1 - -2
+    }
+    Button {
+      text: "toggle"
+      onClick: enabled = !(count > 0)
+    }
+    Button {
+      text: "precedence"
+      onClick: count = count + 2 * 3
+    }
+  }
+}
+)ui",
+      "counter"
+  );
+
+  REQUIRE(generated.source.find("count = (count - 0);") != std::string::npos);
+  REQUIRE(generated.source.find("count = (1 - (-2));") != std::string::npos);
+  REQUIRE(generated.source.find("enabled = (!((count > 0)));") != std::string::npos);
+  REQUIRE(generated.source.find("count = (count + (2 * 3));") != std::string::npos);
 }
 
 TEST_CASE("Declarative syntax rejects parent-size shortcuts") {
-  RequireGeneratorError([] {
+  RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
 component Invalid {
@@ -81,7 +118,7 @@ component Invalid {
 }
 
 TEST_CASE("Declarative syntax validates component roots and required properties") {
-  RequireGeneratorError([] {
+  RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
 component Invalid {
@@ -91,7 +128,7 @@ component Invalid {
         "invalid"
     ));
   });
-  RequireGeneratorError([] {
+  RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
 component Invalid {

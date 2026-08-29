@@ -6,6 +6,7 @@ huxerui_add_test_suite(huxerui_runtime_tests HuxerUIRuntimeTests
             application.cpp
             clipboard.cpp
             composition.cpp
+            declarative_preview.cpp
             file_picker.cpp
             file_drop.cpp
             gestures.cpp
@@ -40,6 +41,8 @@ huxerui_add_test_suite(huxerui_runtime_tests HuxerUIRuntimeTests
             virtual_layout.cpp
             window.cpp
             "${HUXERUI_TEST_DIR}/support/builtin_resources.cpp"
+            "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen/parser.cpp"
+            "${HUXERUI_PROJECT_DIR}/tools/preview/evaluator.cpp"
 )
 if (TARGET HuxerUI::testing)
     huxerui_add_test_suite(huxerui_ui_tests HuxerUIUiTests

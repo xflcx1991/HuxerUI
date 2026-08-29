@@ -3,6 +3,7 @@ project(huxerui_declarative_codegen LANGUAGES CXX)
 
 add_executable(huxerui_declarative_codegen
         main.cpp
+        parser.cpp
         generator.cpp
 )
 

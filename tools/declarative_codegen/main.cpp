@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
     );
     WriteFile(arguments.output_header, generated.header);
     WriteFile(arguments.output_cpp, generated.source);
-  } catch (const huxerui::declarative_codegen::GeneratorError& error) {
+  } catch (const huxerui::declarative::ParseError& error) {
     std::cerr << error.what() << ':' << error.Line() << ':' << error.Column() << "\n";
     return 1;
   } catch (const std::exception& error) {
