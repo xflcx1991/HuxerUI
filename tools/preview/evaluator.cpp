@@ -3,9 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -14,6 +18,8 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include <efsw/efsw.hpp>
 
 namespace huxerui::declarative_preview {
 
@@ -639,16 +645,144 @@ template <class T> [[nodiscard]] StateBinding CreateBinding(huxerui::State<T> st
 
 } // namespace
 
+namespace {
+
+[[nodiscard]] std::string ReadFile(const std::filesystem::path& path) {
+  std::ifstream stream(path, std::ios::binary);
+  if (!stream) {
+    throw std::runtime_error("unable to open input file: " + path.string());
+  }
+  return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+}
+
+[[nodiscard]] huxerui::View ErrorPanel(std::string title, std::string detail) {
+  return huxerui::Column {
+    huxerui::Text(std::move(title), huxerui::TextRole::Title),
+    huxerui::Text(std::move(detail)),
+    huxerui::Text("Fix the .ui file; the preview will reload automatically."),
+  }.With(
+      huxerui::Padding(24.0F),
+      huxerui::CrossAlign(huxerui::CrossAxisAlignment::Stretch),
+      huxerui::Spacing(12.0F)
+  );
+}
+
+class PreviewReloadChannel final {
+public:
+  void Notify() {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    ++produced_;
+  }
+
+  [[nodiscard]] bool Consume() {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    if (consumed_ == produced_) {
+      return false;
+    }
+    ++consumed_;
+    return true;
+  }
+
+private:
+  std::mutex mutex_;
+  std::uint64_t produced_ = 0;
+  std::uint64_t consumed_ = 0;
+};
+
+class PreviewFileWatcher final : private efsw::FileWatchListener {
+public:
+  using ChangeCallback = std::function<void()>;
+
+  PreviewFileWatcher(std::filesystem::path path, ChangeCallback callback)
+      : path_(std::move(path)), callback_(std::move(callback)) {}
+
+  PreviewFileWatcher(const PreviewFileWatcher&) = delete;
+  PreviewFileWatcher& operator=(const PreviewFileWatcher&) = delete;
+
+  void Start() {
+    watcher_ = std::make_unique<efsw::FileWatcher>();
+    watch_id_ = watcher_->addWatch(path_.parent_path().string(), this, false);
+    if (watch_id_ < 0) {
+      watcher_.reset();
+      return;
+    }
+    watcher_->watch();
+  }
+
+  void Stop() {
+    if (watcher_ && watch_id_ >= 0) {
+      watcher_->removeWatch(watch_id_);
+    }
+    watcher_.reset();
+  }
+
+private:
+  [[nodiscard]] bool MatchesWatchedFile(
+      const std::string& directory,
+      const std::string& filename,
+      const std::string& old_filename
+  ) const {
+    const auto matches = [this](const std::filesystem::path& event_path) {
+      std::error_code error;
+      const auto canonical_event_path = std::filesystem::weakly_canonical(event_path, error);
+      if (error) {
+        return false;
+      }
+      std::error_code watched_error;
+      const auto canonical_watched_path = std::filesystem::weakly_canonical(path_, watched_error);
+      return !watched_error && canonical_event_path == canonical_watched_path;
+    };
+
+    if (matches(std::filesystem::path(directory) / filename)) {
+      return true;
+    }
+    return !old_filename.empty() && matches(std::filesystem::path(directory) / old_filename);
+  }
+
+  void handleFileAction(
+      efsw::WatchID,
+      const std::string& directory,
+      const std::string& filename,
+      efsw::Action,
+      const std::string& old_filename
+  ) override {
+    try {
+      if (MatchesWatchedFile(directory, filename, old_filename)) {
+        callback_();
+      }
+    } catch (const std::exception&) {
+      // File watching must never propagate exceptions into efsw's watcher thread.
+    }
+  }
+
+  std::filesystem::path path_;
+  ChangeCallback callback_;
+  std::unique_ptr<efsw::FileWatcher> watcher_;
+  efsw::WatchID watch_id_ = -1;
+};
+
+} // namespace
+
 struct StateSpec {
   std::string name;
   StateKind kind;
   std::string literal;
 };
 
-huxerui::View EvaluateComponent(const huxerui::declarative::Component& component) {
+huxerui::View EvaluateStatefulComponent(
+    const huxerui::declarative::Component& component,
+    const Node& root,
+    const std::vector<StateSpec>& state_specs
+);
+
+huxerui::View EvaluateComponent(ComponentHandle component) {
+  if (component == nullptr) {
+    throw std::invalid_argument("HuxerUI declarative component must not be null");
+  }
+
   std::vector<StateSpec> state_specs;
   bool has_state = false;
-  for (const Node& child : component.children) {
+  for (const Node& child : component->children) {
     if (child.type != "state") {
       continue;
     }
@@ -667,43 +801,189 @@ huxerui::View EvaluateComponent(const huxerui::declarative::Component& component
     }
   }
 
-  const Node* root = component.FindRoot();
+  const Node* root = component->FindRoot();
   if (root == nullptr) {
-    ThrowParseError(component.offset, component.line, component.column, "a component must have one root node");
+    ThrowParseError(component->offset, component->line, component->column, "a component must have one root node");
   }
 
   if (!has_state) {
     return NodeEvaluator(std::make_shared<StateBindings>()).Evaluate(*root);
   }
 
-  return huxerui::Scope([root, state_specs = std::move(state_specs)]() -> huxerui::View {
-    auto bindings = std::make_shared<StateBindings>();
-    for (const StateSpec& spec : state_specs) {
-      switch (spec.kind) {
-      case StateKind::Bool: {
-        const bool value = spec.literal == "true";
-        (*bindings)[spec.name] = CreateBinding<bool>(huxerui::UseState(value));
-        break;
-      }
-      case StateKind::Integer: {
-        const int64_t value = std::stoll(spec.literal);
-        (*bindings)[spec.name] = CreateBinding<int64_t>(huxerui::UseState(value));
-        break;
-      }
-      case StateKind::Number: {
-        const double value = std::stod(spec.literal);
-        (*bindings)[spec.name] = CreateBinding<double>(huxerui::UseState(value));
-        break;
-      }
-      case StateKind::String: {
-        const std::string value = (spec.literal.size() >= 2 && spec.literal.front() == '"' && spec.literal.back() == '"') ? spec.literal.substr(1, spec.literal.size() - 2) : spec.literal;
-        (*bindings)[spec.name] = CreateBinding<std::string>(huxerui::UseState(value));
-        break;
-      }
-      }
+  return huxerui::Scope([component, root, state_specs = std::move(state_specs)]() -> huxerui::View {
+    try {
+      return EvaluateStatefulComponent(*component, *root, state_specs);
+    } catch (const std::exception& error) {
+      return ErrorPanel("HuxerUI Declarative Component Error", error.what());
     }
-    return NodeEvaluator(bindings).Evaluate(*root);
   });
+}
+
+huxerui::View EvaluateComponent(const huxerui::declarative::Component& component) {
+  return EvaluateComponent(std::make_shared<const huxerui::declarative::Component>(component));
+}
+
+huxerui::View EvaluateStatefulComponent(
+    const huxerui::declarative::Component& component,
+    const Node& root,
+    const std::vector<StateSpec>& state_specs
+) {
+  static_cast<void>(component);
+  auto bindings = std::make_shared<StateBindings>();
+  for (const StateSpec& spec : state_specs) {
+    switch (spec.kind) {
+    case StateKind::Bool: {
+      const bool value = spec.literal == "true";
+      (*bindings)[spec.name] = CreateBinding<bool>(huxerui::UseState(value));
+      break;
+    }
+    case StateKind::Integer: {
+      const int64_t value = std::stoll(spec.literal);
+      (*bindings)[spec.name] = CreateBinding<int64_t>(huxerui::UseState(value));
+      break;
+    }
+    case StateKind::Number: {
+      const double value = std::stod(spec.literal);
+      (*bindings)[spec.name] = CreateBinding<double>(huxerui::UseState(value));
+      break;
+    }
+    case StateKind::String: {
+      const bool quoted =
+          spec.literal.size() >= 2 && spec.literal.front() == '"' && spec.literal.back() == '"';
+      const std::string value =
+          quoted ? spec.literal.substr(1, spec.literal.size() - 2) : spec.literal;
+      (*bindings)[spec.name] = CreateBinding<std::string>(huxerui::UseState(value));
+      break;
+    }
+    }
+  }
+  return NodeEvaluator(bindings).Evaluate(root);
+}
+
+PreviewSnapshotHandle MakePreviewSnapshot(
+    const std::filesystem::path& path,
+    std::string source
+) {
+  try {
+    auto document = std::make_shared<huxerui::declarative::Document>(
+        huxerui::declarative::ParseDocument(source, path.string())
+    );
+    if (document->components.size() != 1) {
+      throw huxerui::declarative::ParseError(
+          0,
+          1,
+          1,
+          "expected exactly one component, got " + std::to_string(document->components.size())
+      );
+    }
+
+    auto component = huxerui::declarative_preview::ComponentHandle(
+        document,
+        &document->components.front()
+    );
+    return std::make_shared<const PreviewSnapshot>(
+        PreviewSnapshot{
+            .source = std::move(source),
+            .component = std::move(component),
+            .error = {},
+            .line = 0,
+            .column = 0,
+        }
+    );
+  } catch (const huxerui::declarative::ParseError& error) {
+    return std::make_shared<const PreviewSnapshot>(
+        PreviewSnapshot{
+            .source = std::move(source),
+            .component = nullptr,
+            .error = error.what(),
+            .line = error.Line(),
+            .column = error.Column(),
+        }
+    );
+  } catch (const std::exception& error) {
+    return std::make_shared<const PreviewSnapshot>(
+        PreviewSnapshot{
+            .source = std::move(source),
+            .component = nullptr,
+            .error = error.what(),
+            .line = 0,
+            .column = 0,
+        }
+    );
+  }
+}
+
+PreviewSnapshotHandle LoadPreviewSnapshot(const std::filesystem::path& path) {
+  try {
+    return MakePreviewSnapshot(path, ReadFile(path));
+  } catch (const std::exception& error) {
+    return std::make_shared<const PreviewSnapshot>(
+        PreviewSnapshot{
+            .source = {},
+            .component = nullptr,
+            .error = error.what(),
+            .line = 0,
+            .column = 0,
+        }
+    );
+  }
+}
+
+huxerui::View RenderPreviewSnapshot(const PreviewSnapshot& snapshot) {
+  if (!snapshot.IsValid()) {
+    std::ostringstream detail;
+    detail << snapshot.error;
+    if (snapshot.line != 0) {
+      detail << '\n' << snapshot.line << ':' << snapshot.column;
+    }
+    return ErrorPanel("HuxerUI Preview Error", detail.str());
+  }
+
+  try {
+    return EvaluateComponent(snapshot.component)
+        .Key(static_cast<std::int64_t>(std::hash<std::string>{}(snapshot.source)));
+  } catch (const std::exception& error) {
+    return ErrorPanel("HuxerUI Preview Error", error.what());
+  }
+}
+
+huxerui::View PreviewHost(const std::filesystem::path& path) {
+  auto snapshot = huxerui::UseState(LoadPreviewSnapshot(path));
+  auto tasks = huxerui::UseTaskScope();
+
+  Lifecycle([=] {
+    auto reload = std::make_shared<PreviewReloadChannel>();
+    auto watcher = std::make_shared<PreviewFileWatcher>(
+        path,
+        [reload] { reload->Notify(); }
+    );
+
+    watcher->Start();
+    tasks.Launch([snapshot, reload, path]() -> huxerui::Task<void> {
+      while (true) {
+        co_await huxerui::Delay(20ms);
+
+        if (!reload->Consume()) {
+          continue;
+        }
+
+        // Editors commonly emit several events per save. Wait for a short quiet period.
+        do {
+          co_await huxerui::Delay(50ms);
+        } while (reload->Consume());
+
+        try {
+          snapshot = MakePreviewSnapshot(path, ReadFile(path));
+        } catch (const std::exception&) {
+          // Preserve the last valid UI across transient read and save windows.
+        }
+      }
+    });
+
+    return [watcher] { watcher->Stop(); };
+  }, path.string());
+
+  return RenderPreviewSnapshot(*snapshot.Get());
 }
 
 } // namespace huxerui::declarative_preview

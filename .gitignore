@@ -12,3 +12,4 @@ cmake-build**
 /obj/
 .omo/
 build-egl/
+/huxerui-dsl-debug/

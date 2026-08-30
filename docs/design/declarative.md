@@ -65,12 +65,8 @@ The initial grammar supports component declarations, nested `Center`/`Text`/`But
 huxerui_preview counter.ui
 ```
 
-The preview tool supports the same component, state, layout, and expression grammar as code generation. State changes from `onClick` handlers update the preview in real time. Custom C++ components and complex application logic are not available in the preview; use the code-generation path for full application behavior.
+The preview process stays running and uses efsw to watch the directory containing the source file. A saved change is debounced, parsed into an immutable preview snapshot, and applied through HuxerUI State so the declarative subtree is replaced inside the existing Runtime and window. External file-watching tools are not required for `.ui` iteration.
 
-A typical development loop uses `watchexec` to restart the preview on file changes:
+Saving invalid syntax or an unsupported node shows a preview error panel. Saving a valid file again reloads the UI automatically. State changes from buttons update the preview in real time. Replacing the declarative subtree after a file change resets DSL state to its declared initial values. Custom C++ components and complex application logic are not available in the preview; use the code-generation path for full application behavior. Modifying C++ evaluator or framework code still requires rebuilding and restarting the preview.
 
-```bash
-watchexec --restart --exts ui --debounce 300ms -- huxerui_preview counter.ui
-```
-
-Each restart re-parses the file and rebuilds the window. State resets to initial values on restart because the preview process does not preserve runtime state across restarts.
+The build fetches efsw 1.7.2 through FetchContent. efsw 1.5.1 and newer declares CMake 3.27 as its minimum, while HuxerUI currently supports CMake 3.20; the preview build applies a small patch to that declared minimum. efsw uses its own platform watcher, with a generic fallback provided by efsw.

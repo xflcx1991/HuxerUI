@@ -44,6 +44,7 @@ huxerui_add_test_suite(huxerui_runtime_tests HuxerUIRuntimeTests
             "${HUXERUI_PROJECT_DIR}/tools/declarative_codegen/parser.cpp"
             "${HUXERUI_PROJECT_DIR}/tools/preview/evaluator.cpp"
 )
+target_link_libraries(huxerui_runtime_tests PRIVATE efsw-static)
 if (TARGET HuxerUI::testing)
     huxerui_add_test_suite(huxerui_ui_tests HuxerUIUiTests
             LABELS common runtime testing
