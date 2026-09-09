@@ -1,4 +1,4 @@
-component Counter {
+Counter {
   state {
     count: 0
   }

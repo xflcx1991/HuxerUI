@@ -71,7 +71,7 @@ void ClickText(Runtime& runtime, std::string_view label, std::int64_t pointer_id
 
 TEST_CASE("Declarative preview evaluates subtraction without consuming the operator") {
   PreviewRuntime preview(R"ui(
-component Counter {
+Counter {
   state {
     count: 10
   }
@@ -109,7 +109,7 @@ component Counter {
 
 TEST_CASE("Declarative preview evaluates unary and boolean expressions") {
   PreviewRuntime preview(R"ui(
-component Expressions {
+Expressions {
   state {
     value: 0
     enabled: false
@@ -160,7 +160,7 @@ TEST_CASE("Declarative preview reloads in the same Runtime") {
     stream << source;
   };
 
-  write(R"ui(component Counter {
+  write(R"ui(Counter {
   state {
     count: 0
   }
@@ -179,7 +179,7 @@ TEST_CASE("Declarative preview reloads in the same Runtime") {
 
   REQUIRE(ContainsText(runtime.BuildFrame(), "0"));
 
-  write(R"ui(component Counter {
+  write(R"ui(Counter {
   state {
     count: 42
   }
@@ -197,7 +197,7 @@ TEST_CASE("Declarative preview reloads in the same Runtime") {
   }
   REQUIRE(ContainsText(runtime.BuildFrame(), "42"));
 
-  write("component Counter { Text {} }\n");
+  write("Counter { Text {} }\n");
   for (int iteration = 0; iteration < 12 && !ContainsText(runtime.BuildFrame(), "HuxerUI Preview Error"); ++iteration) {
     platform.AdvanceTime(0.03F);
     platform.RunPlatformModuleTasks();
@@ -206,7 +206,7 @@ TEST_CASE("Declarative preview reloads in the same Runtime") {
   }
   REQUIRE(ContainsText(runtime.BuildFrame(), "HuxerUI Preview Error"));
 
-  write(R"ui(component Counter {
+  write(R"ui(Counter {
   state {
     count: 7
   }

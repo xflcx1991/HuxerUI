@@ -44,12 +44,10 @@ public:
   [[nodiscard]] Document Parse() {
     Document document;
     SkipTrivia();
-    while (!End()) {
-      document.components.push_back(ParseComponent());
-      SkipTrivia();
-    }
-    if (document.components.empty()) {
-      Fail("expected at least one component declaration");
+    document.components.push_back(ParseComponent());
+    SkipTrivia();
+    if (!End()) {
+      Fail("a declarative file must contain exactly one component declaration");
     }
     return document;
   }
@@ -59,11 +57,6 @@ private:
     const std::size_t offset = position_;
     const int line = line_;
     const int column = column_;
-    const std::string keyword = ParseIdentifier();
-    if (keyword != "component") {
-      Fail("expected 'component' declaration at module scope", offset, line, column);
-    }
-    SkipInlineSpace();
     Component component;
     component.name = ParseIdentifier();
     component.offset = offset;

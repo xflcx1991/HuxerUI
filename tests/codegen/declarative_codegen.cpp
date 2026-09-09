@@ -11,7 +11,7 @@ using huxerui::declarative::ParseError;
 
 TEST_CASE("Declarative counter emits existing HuxerUI composition APIs") {
   const std::string source = R"ui(
-component Counter {
+Counter {
   state {
     count: 0
   }
@@ -43,7 +43,7 @@ component Counter {
 TEST_CASE("Declarative state names are not limited to count") {
   const auto generated = GenerateSources(
       R"ui(
-component Toggle {
+Toggle {
   state {
     enabled: true
   }
@@ -68,7 +68,7 @@ template <class Function> void RequireParseError(Function&& function) {
 TEST_CASE("Declarative expressions preserve binary and unary operators") {
   const auto generated = GenerateSources(
       R"ui(
-component Counter {
+Counter {
   state {
     count: 0
     enabled: false
@@ -106,7 +106,7 @@ TEST_CASE("Declarative syntax rejects parent-size shortcuts") {
   RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
-component Invalid {
+Invalid {
   Text {
     text: "${screen.width}"
   }
@@ -117,11 +117,31 @@ component Invalid {
   });
 }
 
+TEST_CASE("Declarative files contain exactly one top-level component") {
+  RequireParseError([] {
+    static_cast<void>(GenerateSources(R"ui(Invalid {})ui", "invalid"));
+  });
+  RequireParseError([] {
+    static_cast<void>(GenerateSources(
+        R"ui(
+First {
+  Text {}
+}
+
+Second {
+  Text { text: "two" }
+}
+)ui",
+        "multiple"
+    ));
+  });
+}
+
 TEST_CASE("Declarative syntax validates component roots and required properties") {
   RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
-component Invalid {
+Invalid {
   Text {}
 }
 )ui",
@@ -131,7 +151,7 @@ component Invalid {
   RequireParseError([] {
     static_cast<void>(GenerateSources(
         R"ui(
-component Invalid {
+Invalid {
   Text { text: "one" }
   Text { text: "two" }
 }

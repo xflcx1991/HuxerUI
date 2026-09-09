@@ -7,7 +7,7 @@ HuxerUI includes an optional `.ui` front end for small declarative component tre
 ## Example
 
 ```text
-component Counter {
+Counter {
   state {
     count: 0
   }
@@ -36,7 +36,7 @@ component Counter {
 }
 ```
 
-`state` declarations become `UseState` values in a generated `Scope`. Reading a state in an expression or `${name}` interpolation subscribes the component through the existing state mechanism. An `onClick` assignment writes the same state value. `Center` is a convenience node lowered to a `Stack` with a centered `Align` modifier.
+`state` declarations become `UseState` values in a generated `Scope`. A `.ui` file declares exactly one top-level component, and the top-level name is the generated C++ function name. Reading a state in an expression or `${name}` interpolation subscribes the component through the existing state mechanism. An `onClick` assignment writes the same state value. `Center` is a convenience node lowered to a `Stack` with a centered `Align` modifier.
 
 The layout model follows HuxerUI's existing constraint-based layouts. `Row`, `Column`, `Stack`, spacing, alignment, padding, and grow are preferred over references such as `$screen.width` or `parent.width`; a component should not need to read its parent to participate in normal layout.
 
@@ -55,7 +55,7 @@ Native source builds use the `huxerui_declarative_codegen` host executable. Cros
 
 ## Initial limits
 
-The initial grammar supports component declarations, nested `Center`/`Text`/`Button`/`Row`/`Column`/`Stack` nodes, scalar state literals, arithmetic and boolean expressions, text interpolation, and single-state assignments from `onClick`. Text and button labels are double-quoted strings. Parent-size shortcuts, arbitrary C++ expressions, loops, conditional children, and custom components are not part of this first version.
+The initial grammar supports one top-level component declaration per file, nested `Center`/`Text`/`Button`/`Row`/`Column`/`Stack` nodes, scalar state literals, arithmetic and boolean expressions, text interpolation, and single-state assignments from `onClick`. Text and button labels are double-quoted strings. Parent-size shortcuts, arbitrary C++ expressions, loops, conditional children, and custom components are not part of this first version.
 
 ## Preview tool
 
